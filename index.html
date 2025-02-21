@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Air Quality Index</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 24px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .aqi-result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Real-Time Air Quality Index</h1>
+        <input type="text" id="city" placeholder="Enter City Name">
+        <button onclick="fetchAQI()">Get AQI</button>
+        <div id="result" class="aqi-result"></div>
+    </div>
+
+    <script>
+      async function fetchAQI() {
+    const city = document.getElementById('city').value;
+    if (!city) {
+        alert('Please enter a city name');
+        return;
+    }
+
+    const apiKey = '0e821d28bdd8516a4d0f157ddcde023a'; // Your API Key
+    const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${city},IN&limit=1&appid=${apiKey}`;
+
+    try {
+        // Step 1: Get Latitude & Longitude
+        const geoResponse = await fetch(geoUrl);
+        const geoData = await geoResponse.json();
+
+        if (!geoData || geoData.length === 0) {
+            document.getElementById('result').innerHTML = 'City not found. Try another.';
+            return;
+        }
+
+        const { lat, lon, name } = geoData[0];
+
+        // Step 2: Fetch AQI Data
+        const aqiUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`;
+        const aqiResponse = await fetch(aqiUrl);
+        const aqiData = await aqiResponse.json();
+
+        if (!aqiData || !aqiData.list) {
+            document.getElementById('result').innerHTML = 'AQI data not found.';
+            return;
+        }
+
+        const aqi = aqiData.list[0].main.aqi;
+        const pollutants = aqiData.list[0].components;
+
+        // Step 3: Fetch Weather Data
+        const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+        const weatherResponse = await fetch(weatherUrl);
+        const weatherData = await weatherResponse.json();
+
+        if (!weatherData || !weatherData.main) {
+            document.getElementById('result').innerHTML = 'Weather data not found.';
+            return;
+        }
+
+        const temperature = weatherData.main.temp;
+        const humidity = weatherData.main.humidity;
+        const windSpeed = weatherData.wind.speed;
+        const weatherCondition = weatherData.weather[0].description;
+
+        // Display AQI + Weather Data
+        document.getElementById('result').innerHTML = `
+            <h3>AQI in ${name}: ${aqi} (${getAQIDescription(aqi)})</h3>
+            <p>🌡️ Temperature: ${temperature}°C</p>
+            <p>💧 Humidity: ${humidity}%</p>
+            <p>🌬️ Wind Speed: ${windSpeed} m/s</p>
+            <p>☁️ Condition: ${weatherCondition}</p>
+            <h4>Pollutants:</h4>
+            <p>PM2.5: ${pollutants.pm2_5} µg/m³</p>
+            <p>PM10: ${pollutants.pm10} µg/m³</p>
+            <p>CO: ${pollutants.co} µg/m³</p>
+            <p>NO2: ${pollutants.no2} µg/m³</p>
+            <p>SO2: ${pollutants.so2} µg/m³</p>
+            <p>O3: ${pollutants.o3} µg/m³</p>
+        `;
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').innerHTML = 'Failed to fetch data. Check console.';
+    }
+}
+
+// Function to get AQI category description
+function getAQIDescription(aqi) {
+    const descriptions = {
+        1: "Good 😊",
+        2: "Fair 🙂",
+        3: "Moderate 😐",
+        4: "Poor 😷",
+        5: "Very Poor 🤢"
+    };
+    return descriptions[aqi] || "Unknown";
+}
+
+
+    </script>
+</body>
+</html>
